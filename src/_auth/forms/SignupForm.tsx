@@ -3,14 +3,7 @@ import { Button } from "@/components/ui/button";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/toaster";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import {Form,FormControl,FormField,FormItem,FormLabel,FormMessage,} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Signupvalidation } from "@/lib/validation";
 import Loader from "@/components/ui/shared/Loader";
