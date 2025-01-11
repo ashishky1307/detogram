@@ -5,12 +5,10 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/components/ui/toaster";
 import {Form,FormControl,FormField,FormItem,FormLabel,FormMessage,} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Signupvalidation } from "@/lib/validation";
+import { Signinvalidation} from "@/lib/validation";
 import Loader from "@/components/ui/shared/Loader";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  userCreateUserAccount,
-  userSignInAccount,
+import { userSignInAccount
 } from "@/lib/react-query/queriesAndMutations";
 import { useUserContext } from "@/context/AuthContext";
 
@@ -19,29 +17,18 @@ const SigninForm = () => {
   const { checkAuthUser, setIsAuthenticated } = useUserContext();
   const navigate = useNavigate();
 
-  const { mutateAsync: createUserAccount, isPending: isCreatingAccount } =
-    userCreateUserAccount();
-
-  const { mutateAsync: signInAccount, isPending: isSigningIn } =
+  const { mutateAsync: signInAccount, isPending } =
     userSignInAccount();
 
-  const form = useForm<z.infer<typeof Signupvalidation>>({
-    resolver: zodResolver(Signupvalidation),
+  const form = useForm<z.infer<typeof Signinvalidation>>({
+    resolver: zodResolver(Signinvalidation),
     defaultValues: {
-      name: "",
-      username: "",
       email: "",
       password: "",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof Signupvalidation>) {
-    try {
-      const newUser = await createUserAccount(values);
-      if (!newUser) {
-        toast({ title: "Sign up failed. Please try again." });
-        return;
-      }
+  async function onSubmit(values: z.infer<typeof Signinvalidation>) {
 
       const session = await signInAccount({
         email: values.email,
@@ -61,10 +48,6 @@ const SigninForm = () => {
       } else {
         toast({ title: "Sign up failed. Please try again." });
       }
-    } catch (error) {
-      console.error("Error in SignupForm onSubmit:", error);
-      toast({ title: "Something went wrong. Please try again." });
-    }
   }
 
   return (
@@ -72,40 +55,14 @@ const SigninForm = () => {
       <Form {...form}>
         <div className="sm:w-[420px] flex items-center justify-center flex-col">
           <img src="/assets/images/logo.svg" alt="logo" />
-          <h2 className="h3-bold md:h2-bold mt-4">Create an account</h2>
+          <h2 className="h3-bold md:h2-bold mt-4">Log in to your account</h2>
           <p className="text-light-3 small-medium md:base-regular mt-2">
-            To use Snapgram enter your details
+            welcome back! Please enter your details
           </p>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex-col gap-5 w-full mt-5"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input type="text" className="shad-input" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input type="text" className="shad-input" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -133,21 +90,21 @@ const SigninForm = () => {
               )}
             />
             <Button type="submit" className="shad-button_primary w-full mt-4">
-              {isCreatingAccount ? (
+              {isPending ? (
                 <div className="flex-centre gap-2">
                   <Loader /> Loading...
                 </div>
               ) : (
-                "Sign up"
+                "Sign in"
               )}
             </Button>
             <p className="text-small-regular text-light-2 text-center mt-2">
-              Already have an account?
+              Don't have an account?
               <Link
-                to="/sign-in"
+                to="/sign-up"
                 className="text-primary-500 text-small-semibold ml-1"
               >
-                Log in
+                Sign up
               </Link>
             </p>
           </form>

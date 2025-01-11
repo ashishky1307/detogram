@@ -36,11 +36,11 @@ const SignupForm = () => {
   });
 
   async function onSubmit(values: z.infer<typeof Signupvalidation>) {
-    try {
-      const newUser = await createUserAccount(values);
-      if (!newUser) {
-        toast({ title: "Sign up failed. Please try again." });
-        return;
+     const newUser = await createUserAccount(values);
+      
+     if (!newUser) {
+        return toast({ title: "Sign up failed. Please try again." });
+        
       }
 
       const session = await signInAccount({
@@ -49,22 +49,19 @@ const SignupForm = () => {
       });
 
       if (!session) {
-        toast({ title: "Sign in failed. Please try again." });
-        return;
+       return toast({ title: "Sign up failed. Please try again." });
+        
       }
 
       const isLoggedin = await checkAuthUser();
+     
       if (isLoggedin) {
-        setIsAuthenticated(true);
         form.reset();
         navigate("/");
       } else {
         toast({ title: "Sign up failed. Please try again." });
       }
-    } catch (error) {
-      console.error("Error in SignupForm onSubmit:", error);
-      toast({ title: "Something went wrong. Please try again." });
-    }
+    
   }
 
   return (
