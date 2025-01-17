@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { IUser } from "@/types";
 import { getCurrentUser } from "@/lib/appwrite/api";
 
-export const INITIAL_USER = {
+// Define the initial user state
+export const INITIAL_USER: IUser = {
   id: "",
   name: "",
   username: "",
@@ -13,15 +14,17 @@ export const INITIAL_USER = {
   bio: "",
 };
 
-const INITIAL_STATE = {
+// Define the initial state for the context
+export const INITIAL_STATE = {
   user: INITIAL_USER,
   isLoading: false,
   isAuthenticated: false,
   setUser: () => {},
   setIsAuthenticated: () => {},
-  checkAuthUser: async () => false as boolean,
+  checkAuthUser: async () => false,
 };
 
+// Define the context type
 type IContextType = {
   user: IUser;
   isLoading: boolean;
@@ -31,6 +34,7 @@ type IContextType = {
   checkAuthUser: () => Promise<boolean>;
 };
 
+// Create the context with the initial state
 const AuthContext = createContext<IContextType>(INITIAL_STATE);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -53,25 +57,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           bio: currentAccount.bio,
         });
         setIsAuthenticated(true);
+
         return true;
       }
+
       return false;
     } catch (error) {
-      console.error("Error in checkAuthUser:", error);
+      console.error(error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    const cookieFallback = localStorage.getItem("cookieFallback");
-    if (cookieFallback === "[]")  {
-      navigate("/sign-in");
-    }
-    checkAuthUser();
-  }, []);
+  // useEffect(() => {
+    // const cookieFallback = localStorage.getItem("cookieFallback");
+    // if (
+      // cookieFallback === "[]" ||
+      // cookieFallback === null ||
+      // cookieFallback === undefined
+    // ) {
+      // navigate("/sign-in");
+    // }
 
+    // checkAuthUser();
+  // }, []); 
+  // // Empty dependency array to run only once on mount
+
+  
   const value = {
     user,
     setUser,
@@ -84,4 +97,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Custom hook to use the AuthContext
 export const useUserContext = () => useContext(AuthContext);
