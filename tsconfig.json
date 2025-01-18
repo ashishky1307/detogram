@@ -7,9 +7,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+ 
 
     /* Bundler mode */
     "moduleResolution": "node",
+  
     // "allowImportingTsExtensions": false,
     "resolveJsonModule": true,
     "isolatedModules": true,
