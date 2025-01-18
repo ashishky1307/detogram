@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # snapgram
 =======
 # React + TypeScript + Vite
@@ -52,3 +53,6 @@ export default tseslint.config({
 })
 ```
 >>>>>>> f7e7f4e (Initial commit)
+=======
+# detogram
+>>>>>>> 0d9a965a39f407af074227706942de90a5944234
