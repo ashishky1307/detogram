@@ -222,17 +222,15 @@ export async function deleteFile(fileId: string) {
   }
 }
 
-export async function getRecentPosts(){
-  const posts=await databases.listDocuments(
-    appwriteConfig.databaseID,
-    appwriteConfig.postCollectionID,
-    [Query.orderDesc('$createdAt'),Query.limit(20)]
-  )
 
-  if(!posts) throw Error;
 
-  return posts;
-} 
+
+
+
+
+
+
+
 
 // ============================== GET POSTS
 export async function searchPosts
@@ -308,7 +306,7 @@ length > 0;
 
   try {
     let image = {
-      imageUrl: post.imageUrl,
+      imageUrl: new URL(post.imageUrl),
       imageId: post.imageId,
     };
 
@@ -320,7 +318,7 @@ length > 0;
       if (!uploadedFile) throw Error;
 
       // Get new file url
-      const fileUrl = getFilePreview
+      const fileUrl = await getFilePreview
          (uploadedFile.$id);
       if (!fileUrl) {
         await deleteFile(uploadedFile.
@@ -329,7 +327,7 @@ length > 0;
       }
 
       image = { ...image, imageUrl: 
-       fileUrl, imageId: uploadedFile.
+       new URL(fileUrl), imageId: uploadedFile.
         $id };
     }
 
@@ -481,24 +479,24 @@ listDocuments(
 }
 
 // ============================== GET POPULAR POSTS (BY HIGHEST LIKE COUNT)
-// export async function getRecentPosts() {
-  // try {
-    // const posts = await databases.
-// listDocuments(
-      // appwriteConfig.databaseId,
-      // appwriteConfig.postCollectionId,
-      // [Query.orderDesc("$createdAt"), 
-// Query.limit(20)]
-    // );
-// 
-    // if (!posts) throw Error;
-// 
-    // return posts;
-  // } catch (error) {
-    // console.log(error);
-  // }
-// }
-// 
+export async function getRecentPosts() {
+  try {
+    const posts = await databases.
+listDocuments(
+      appwriteConfig.databaseID,
+      appwriteConfig.postCollectionID,
+      [Query.orderDesc("$createdAt"), 
+Query.limit(20)]
+    );
+
+    if (!posts) throw Error;
+
+    return posts;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 // ============================================================
 // USER
 // ============================================================
@@ -567,7 +565,7 @@ uploadFile(user.file[0]);
       if (!uploadedFile) throw Error;
 
       // Get new file url
-      const fileUrl = getFilePreview
+      const fileUrl = await getFilePreview
 (uploadedFile.$id);
       if (!fileUrl) {
         await deleteFile(uploadedFile.
