@@ -2,7 +2,6 @@ import { useUserContext } from "@/context/AuthContext";
 import { Models } from "appwrite";
 import { Link } from "react-router-dom";
 import PostStats from "./PostStats";
-import { multiFormatDateString } from "@/lib/utils";
 
 
 type PostCardProps = {
@@ -14,7 +13,7 @@ type PostCardProps = {
   
     if (!post.creator) return;
   
-      function multiFormatDateString($createdAt: string): import("react").ReactNode {
+      function multiFormatDateString(_$createdAt: string): import("react").ReactNode {
           throw new Error("Function not implemented.");
       }
 

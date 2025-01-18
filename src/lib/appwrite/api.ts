@@ -1,5 +1,5 @@
 import { INewPost, INewUser } from "@/types";
-import { account, appwriteConfig, avatars, databases ,storage } from "./config";
+import { account, appwriteConfig, avatars, databases as appwriteDatabases,storage } from "./config";
 import { Client, Databases, ID, ImageGravity, Query } from "appwrite";
 import { IUpdatePost, IUpdateUser } from "@/types";
 
@@ -33,7 +33,7 @@ export async function createUserAccount(user: INewUser) {
       name: newAccount.name,
       email: newAccount.email,
       username: user.username,
-      imageUrl: avatarUrl,
+      imageUrl: new URL(avatarUrl),
     });
 
     return newUser;
@@ -51,13 +51,17 @@ export async function saveUserToDB(user: {
   accountId: string;
   email: string;
   name: string;
-  imageUrl: string;
+  imageUrl: URL;
   username?: string;
 }) {
   try {
+    // Validate required fields
     if (!user.accountId || !user.email || !user.name || !user.imageUrl) {
       throw new Error("Missing required fields for saving user to DB.");
     }
+
+    // Debugging: Log user object before sending to Appwrite
+    console.log("Saving user to DB with data:", user);
 
     const newUser = await databases.createDocument(
       appwriteConfig.databaseID,
@@ -76,6 +80,7 @@ export async function saveUserToDB(user: {
     throw error;
   }
 }
+
 
 // ============================== SIGN IN
 export async function SignInAccount(user: { email: string; password: string }) {
