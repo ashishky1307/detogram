@@ -8,4 +8,7 @@ export default defineConfig({
             "@": path.resolve(__dirname, "./src"),
         },
     },
+    build: {
+        outDir: 'build',  // Ensure this points to the 'build' folder if that’s your intended output directory
+    },
 });
