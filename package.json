@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    
+    "clean": "powershell Remove-Item -Recurse -Force dist, build",
+  
     "lint": "eslint .",
     "preview": "vite preview"
   },
