@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    
     "clean": "powershell Remove-Item -Recurse -Force dist, build",
-  
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -20,7 +18,7 @@
     "@radix-ui/react-toast": "^1.2.4",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-query-devtools": "^5.64.1",
-      "@types/react-router-dom": "^5.3.3",
+    "@types/react-router-dom": "^5.3.3",
     "appwrite": "^16.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

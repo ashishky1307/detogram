@@ -1,11 +1,15 @@
 import { INewPost, INewUser } from "@/types";
-import { account, appwriteConfig, avatars, databases as appwriteDatabases,storage } from "./config";
-import { Client, Databases, ID, ImageGravity, Query } from "appwrite";
+import { appwriteConfig, avatars, databases as appwriteDatabases, storage } from "./config";
+import { Client, Databases, Storage, ID, Query, Account, ImageGravity } from 'appwrite';
 import { IUpdatePost, IUpdateUser } from "@/types";
 
 
-// Initialize the Appwrite client and database
-const client = new Client().setEndpoint(appwriteConfig.url).setProject(appwriteConfig.projectID);
+// Initialize the Appwrite client and services
+const client = new Client()
+    .setEndpoint(appwriteConfig.url)
+    .setProject(appwriteConfig.projectID);
+
+const account = new Account(client);
 const databases = new Databases(client);
 
 // ============================== CREATE USER ACCOUNT
@@ -33,7 +37,7 @@ export async function createUserAccount(user: INewUser) {
       name: newAccount.name,
       email: newAccount.email,
       username: user.username,
-      imageUrl: new URL(avatarUrl),
+      imageUrl: new URL(avatarUrl.toString()),
     });
 
     return newUser;
@@ -60,16 +64,30 @@ export async function saveUserToDB(user: {
       throw new Error("Missing required fields for saving user to DB.");
     }
 
-    // Debugging: Log user object before sending to Appwrite
-    console.log("Saving user to DB with data:", user);
+    // Sanitize accountId to meet Appwrite's requirements
+    let sanitizedAccountId = user.accountId
+      .replace(/[^a-zA-Z0-9\-_.]/g, '') // Remove invalid characters
+      .slice(0, 36); // Limit to 36 characters
+
+    // Ensure the ID starts with a letter or number
+    if (!/^[a-zA-Z0-9]/.test(sanitizedAccountId)) {
+      sanitizedAccountId = 'u' + sanitizedAccountId.slice(0, 35); // Add 'u' prefix if needed
+    }
 
     const newUser = await databases.createDocument(
       appwriteConfig.databaseID,
       appwriteConfig.userCollectionID,
       ID.unique(),
       {
-        ...user,
-        userID: user.accountId, // Ensure this aligns with the schema
+        userID: user.accountId,
+        email: user.email,
+        name: user.name,
+        username: user.username,
+        imageurl: user.imageUrl.toString(),
+        bio: "", // Add default empty bio
+        posts: [], // Add default empty posts array
+        liked: [], // Add default empty liked array
+        save: [], // Add default empty save array
       }
     );
 
@@ -85,25 +103,30 @@ export async function saveUserToDB(user: {
 // ============================== SIGN IN
 export async function SignInAccount(user: { email: string; password: string }) {
   try {
-    if (!user.email || !user.password) {
-      throw new Error("Email and password are required.");
+    // Check for existing sessions and delete if exists
+    try {
+      await account.deleteSession('current');
+    } catch (error) {
+      // Ignore error if no session exists
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(user.email)) {
-      throw new Error("Invalid email format.");
-    }
-
-    const session = await account.createSession(user.email, user.password);
-
-    console.log("User signed in:", session);
+    // Create a new session with email/password
+    const session = await account.createEmailPasswordSession(
+      user.email,
+      user.password
+    );
+    
+    if (!session) throw new Error("Failed to create session");
+    
     return session;
   } catch (error) {
-    console.error("Error signing in:", error);
-    throw error;
+    console.error("Sign-In Error:", error);
+    throw error; // Re-throw to handle in the UI
   }
 }
+
+
+
 
 
 // ============================== GET CURRENT USER
@@ -116,7 +139,7 @@ export async function getCurrentUser() {
     const currentUser = await databases.listDocuments(
       appwriteConfig.databaseID,
       appwriteConfig.userCollectionID,
-      [Query.equal("accountId", currentAccount.$id)]
+      [Query.equal("userID", currentAccount.$id)]
     );
 
     if (!currentUser) throw Error;
@@ -146,6 +169,7 @@ export async function SignOutAccount () {
   try {
     const session = await account.deleteSession("current");
     return session;
+    
   } catch (error) {
     console.error(error);
     throw error;
@@ -154,19 +178,31 @@ export async function SignOutAccount () {
 
 // ============================== CREATE POST
 export async function createPost(post: INewPost) {
+  let uploadedFile: any = null;
+  
   try {
-    const uploadedFile = await uploadFile(post.file[0]);
+    // Validate file input
+    if (!post.file || post.file.length === 0) {
+      throw new Error("No file provided");
+    }
+
+    // Upload the file
+    uploadedFile = await uploadFile(post.file[0]);
     if (!uploadedFile) throw new Error("File upload failed");
 
+    // Generate file preview URL
     const fileUrl = await getFilePreview(uploadedFile.$id);
-    console.log({fileUrl})
     if (!fileUrl) {
       await deleteFile(uploadedFile.$id);
       throw new Error("File preview generation failed");
     }
 
+    console.log("File URL before saving:", fileUrl);
+
+    // Clean up and parse tags
     const tags = post.tags?.replace(/ /g, "").split(",") || [];
 
+    // Create post with correct field names matching schema
     const newPost = await databases.createDocument(
       appwriteConfig.databaseID,
       appwriteConfig.postCollectionID,
@@ -174,21 +210,27 @@ export async function createPost(post: INewPost) {
       {
         creator: post.userId,
         caption: post.caption,
-        imageUrl: fileUrl,
-        imageId: uploadedFile.$id,
+        ImageURL: fileUrl.toString(),  // This is correct
+        imageID: uploadedFile.$id,
         location: post.location,
         tags: tags,
       }
     );
 
-    if (!newPost) {
-      await deleteFile(uploadedFile.$id);
-      throw new Error("Post creation failed");
-    }
-
+    console.log("Created post:", newPost);
     return newPost;
+
   } catch (error) {
+    // Cleanup on error
+    if (uploadedFile) {
+      try {
+        await deleteFile(uploadedFile.$id);
+      } catch (cleanupError) {
+        console.error("Error deleting file during cleanup:", cleanupError);
+      }
+    }
     console.error("Error creating post:", error);
+    throw error;
   }
 }
 
@@ -209,12 +251,15 @@ export async function getFilePreview(fileId: string) {
       fileId,
       2000,
       2000,
-      ImageGravity.Top,
+      ImageGravity.Center,
       100
     );
+    
+    console.log("Generated preview URL:", fileUrl);
     return fileUrl;
   } catch (error) {
     console.error("Error getting file preview:", error);
+    return null;
   }
 }
 
@@ -312,7 +357,7 @@ length > 0;
   try {
     let image = {
       imageUrl: new URL(post.imageUrl),
-      imageId: post.imageId,
+      imageID: post.imageID,
     };
 
     if (hasFileToUpdate) {
@@ -331,9 +376,11 @@ length > 0;
         throw Error;
       }
 
-      image = { ...image, imageUrl: 
-       new URL(fileUrl), imageId: uploadedFile.
-        $id };
+      image = { 
+        ...image, 
+        imageUrl: new URL(fileUrl),
+        imageID: uploadedFile.$id 
+      };
     }
 
     // Convert tags into array
@@ -347,7 +394,7 @@ length > 0;
       {
         caption: post.caption,
         imageUrl: image.imageUrl,
-        imageId: image.imageId,
+        imageId: image.imageID,
         location: post.location,
         tags: tags,
       }
@@ -357,7 +404,7 @@ length > 0;
     if (!updatedPost) {
       // Delete new file that has been recently uploaded
       if (hasFileToUpdate) {
-        await deleteFile(image.imageId);
+        await deleteFile(image.imageID);
       }
 
       // If no new file uploaded, just throw error
@@ -366,7 +413,7 @@ length > 0;
 
     // Safely delete old file after successful update
     if (hasFileToUpdate) {
-      await deleteFile(post.imageId);
+      await deleteFile(post.imageID);
     }
 
     return updatedPost;
@@ -559,31 +606,27 @@ length > 0;
   try {
     let image = {
       imageUrl: user.imageUrl,
-      imageId: user.imageId,
+      imageID: user.imageID,
     };
 
     if (hasFileToUpdate) {
-      // Upload new file to appwrite 
-storage
-      const uploadedFile = await 
-uploadFile(user.file[0]);
+      const uploadedFile = await uploadFile(user.file[0]);
       if (!uploadedFile) throw Error;
 
-      // Get new file url
-      const fileUrl = await getFilePreview
-(uploadedFile.$id);
+      const fileUrl = await getFilePreview(uploadedFile.$id);
       if (!fileUrl) {
-        await deleteFile(uploadedFile.
-$id);
+        await deleteFile(uploadedFile.$id);
         throw Error;
       }
 
-      image = { ...image, imageUrl: fileUrl, imageId: uploadedFile.$id };
+      image = { 
+        ...image, 
+        imageUrl: fileUrl, 
+        imageID: uploadedFile.$id
+      };
     }
 
-    //  Update user
-    const updatedUser = await databases.
-updateDocument(
+    const updatedUser = await databases.updateDocument(
       appwriteConfig.databaseID,
       appwriteConfig.userCollectionID,
       user.userId,
@@ -591,23 +634,19 @@ updateDocument(
         name: user.name,
         bio: user.bio,
         imageUrl: image.imageUrl,
-        imageId: image.imageId,
+        imageID: image.imageID,
       }
     );
 
-    // Failed to update
     if (!updatedUser) {
-      // Delete new file that has been recently uploaded
       if (hasFileToUpdate) {
-        await deleteFile(image.imageId);
+        await deleteFile(image.imageID);
       }
-      // If no new file uploaded, just throw error
       throw Error;
     }
 
-    // Safely delete old file after successful update
-    if (user.imageId && hasFileToUpdate) {
-      await deleteFile(user.imageId);
+    if (user.imageID && hasFileToUpdate) {
+      await deleteFile(user.imageID);
     }
 
     return updatedUser;
